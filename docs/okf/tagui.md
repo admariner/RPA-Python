@@ -29,8 +29,10 @@ regenerates it from `tagui.py` on every run.
 
 # Public Interface
 
-Process lifecycle and setup (see individual concepts for the ones with
-non-trivial logic):
+Process lifecycle, setup, and the wire protocol connecting them — see
+[tagui/live-mode-protocol](tagui/live-mode-protocol.md) for how these fit
+together, and [tagui/setup-internals](tagui/setup-internals.md) for the
+private per-OS helpers they lean on:
 
 ```python
 setup()                                                                       # tagui/setup.md
@@ -43,72 +45,70 @@ update()                                                                      # 
 download(download_url=None, filename_to_save=None)                           # tagui/download.md
 ```
 
-Configuration / diagnostics:
+Configuration / diagnostics — see
+[tagui/config-utility](tagui/config-utility.md):
 
 ```python
-debug(on_off=None)                    # get/set debug mode (echoes TagUI output to stdout)
-error(on_off=None)                    # get/set whether errors raise Exception instead of just printing
-show_error(error_message=None)        # print or raise the given error message, per error() mode
-tagui_location(location=None)         # get/set the folder TagUI is installed to (default: user home)
-timeout(timeout_in_seconds=None)      # get/set the default wait timeout (seconds) for UI elements
-download_location(location=None)      # get/set the browser's file download directory
-coord(x_coordinate=0, y_coordinate=0) # build an "(x,y)" coordinate string accepted by other calls
+coord(x_coordinate=0, y_coordinate=0)
+debug(on_off=None)
+error(on_off=None)
+show_error(error_message=None)
+tagui_location(location=None)
+unzip(file_to_unzip=None, unzip_location=None)
+timeout(timeout_in_seconds=None)
+download_location(location=None)
 ```
 
-Web / desktop UI interaction (each waits for readiness via `_started()`/
-`exist()` then delegates to `send()`):
+Web / desktop UI interaction — each waits for readiness via `_started()`/
+[`exist()`](tagui/exist-present.md) then delegates to
+[`send()`](tagui/send.md):
 
 ```python
-url(webpage_url=None)                                    # navigate, or return current URL
-exist(element_identifier=None)                            # True if element/coordinate exists (waits up to timeout)
-present(element_identifier=None)                          # True if element/coordinate is present now (no wait)
-click(element_identifier=None, test_coordinate=None)
-rclick(element_identifier=None, test_coordinate=None)      # right-click
-dclick(element_identifier=None, test_coordinate=None)      # double-click
-hover(element_identifier=None, test_coordinate=None)
-type(element_identifier=None, text=None, test_coordinate=None)
-select(element_identifier=None, option_value=None, test_coordinate=None)
-read(element_identifier=None, test_coordinate=None)
-snap(element_identifier=None, filename_to_save=None, test_coordinate=None)
-table(element_identifier=None, filename_to_save=None)      # export an HTML table to CSV
-upload(element_identifier=None, filename_to_upload=None)
-frame(main_frame=None, sub_frame=None)                     # switch webpage context into an iframe
-popup(string_in_url=None)                                  # switch webpage context into a popup/tab
-count(element_identifier=None)
-title()
-text()
-dom(statement_to_run=None)                                 # run and return an arbitrary JS/DOM statement (chrome mode)
-api(url_to_query=None)                                     # stub; recommends using the `requests` package instead
+url(webpage_url=None)                                                        # tagui/url.md
+exist(element_identifier=None) / present(element_identifier=None)            # tagui/exist-present.md
+click(...) / rclick(...) / dclick(...)                                       # tagui/click-family.md
+hover(element_identifier=None, test_coordinate=None)                         # tagui/hover.md
+type(...) / select(...)                                                      # tagui/type-select.md
+read(...) / snap(...)                                                        # tagui/read-snap.md
+table(...) / upload(...) / bin(...)                                          # tagui/table-upload-bin.md
+frame(main_frame=None, sub_frame=None) / popup(string_in_url=None)           # tagui/frame-popup.md
+count(element_identifier=None) / title() / text() / timer()                  # tagui/state-readers.md
+dom(statement_to_run=None) / run(command_to_run=None)                        # tagui/dom-run.md
+api(url_to_query=None)  # stub; recommends using the `requests` package instead
 ```
 
-Keyboard / mouse / vision (require `init(visual_automation=True)`):
+Keyboard / mouse / vision (require `init(visual_automation=True)`) — see
+[tagui/visual-input](tagui/visual-input.md),
+[tagui/mouse-position](tagui/mouse-position.md),
+[tagui/clipboard](tagui/clipboard.md):
 
 ```python
-keyboard(keys_and_modifiers=None)
-mouse(mouse_action=None)               # 'down' or 'up'
-vision(command_to_run=None)
+keyboard(keys_and_modifiers=None) / mouse(mouse_action=None) / vision(command_to_run=None)
 mouse_xy() / mouse_x() / mouse_y()
-clipboard(text_to_put=None)            # get/set OS clipboard
+clipboard(text_to_put=None)
 ```
 
-Misc utilities:
+Misc — see [tagui/misc](tagui/misc.md) and
+[tagui/string-utility](tagui/string-utility.md):
 
 ```python
 wait(delay_in_seconds=5.0)
 check(condition_to_check=None, text_if_true='', text_if_false='')
-ask(text_to_prompt='')                 # JS prompt() in chrome mode, console input otherwise
-focus(app_to_focus=None)               # bring a desktop app window to the foreground (Windows/macOS only)
-run(command_to_run=None)               # run a shell command, return its output
-timer()                                # elapsed seconds of current TagUI flow
-telegram(telegram_id=None, text_to_send=None, custom_endpoint=None)  # deprecated, see Notes
-bin(file_to_bin=None, password=None, server='https://tebel.org/bin/')  # deprecated, see Notes
-unzip(file_to_unzip=None, unzip_location=None)
-load(filename_to_load=None)
-echo(text_to_echo='')
+ask(text_to_prompt='')
+focus(app_to_focus=None)
+telegram(telegram_id=None, text_to_send=None, custom_endpoint=None)  # deprecated
+get_text(source_text=None, left=None, right=None, count=1)
+del_chars(source_text=None, characters=None)
+```
+
+Trivial file I/O one-liners (no dedicated concept — genuinely simple
+wrappers around Python's own `open()`/`print`):
+
+```python
+load(filename_to_load=None)                      # read a file's contents
+echo(text_to_echo='')                            # print()
 dump(text_to_dump=None, filename_to_save=None)   # overwrite file with text
 write(text_to_write=None, filename_to_save=None) # append text to file
-get_text(source_text=None, left=None, right=None, count=1)  # substring between two delimiters
-del_chars(source_text=None, characters=None)                # strip given characters from a string
 ```
 
 # Dependencies
